@@ -1,0 +1,42 @@
+* {
+	-webkit-box-sizing: border-box;
+	-moz-box-sizing: border-box;
+	box-sizing: border-box;
+}
+
+html, body {
+	height: 100%;
+}
+
+body {
+	background: darken(#fff, 5%);
+}
+
+section {
+	border-bottom: 1px solid rgba($primary-color, .2);
+}
+
+.group:after,
+.container:after,
+.row:after {
+	content: "";
+	display: table;
+	clear: both;
+}
+
+a { cursor: pointer; }
+
+img {
+	max-width: 100%;
+}
+
+section {
+	padding: 1em .5em;
+	
+	@include mq($from: mobile) {
+		padding: 2.5em 1em;
+	}
+	p {
+		margin: 0 auto;
+	}
+}

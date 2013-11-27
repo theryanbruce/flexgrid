@@ -1,0 +1,211 @@
+// ----
+// Sass (v3.3.0.rc.1)
+// Compass (v0.13.alpha.10)
+// ----
+
+// To enable support for browsers that do not support @media queries,
+// (IE <= 8, Firefox <= 3, Opera <= 9) set $mq-responsive to false
+// Create a separate stylesheet served exclusively to these browsers,
+// meaning @media queries will be rasterized, relying on the cascade itself
+$mq-responsive: true !default;
+
+// Name your breakpoints in a way that creates a ubiquitous language
+// across team members. It will improve communication between
+// stakeholders, designers, developers, and testers.
+$mq-breakpoints: (
+    (mobile  480px)
+    (tablet  640px)
+    (desktop 900px)
+    (wide    1260px)
+) !default;
+
+// Define the breakpoint from the $mq-breakpoints list that should
+// be used as the target width when outputting a static stylesheet
+// (i.e. when $mq-responsive is set to 'false').
+$mq-static-breakpoint: "desktop" !default;
+
+
+@function mq-px2em($px, $base-font-size: 16px) {
+    @if (unitless($px)) {
+        @warn "Assuming #{$px} to be in pixels, attempting to convert it into pixels for you";
+        @return mq-px2em($px + 0px); // That may fail.
+    } @else if (unit($px) == em) {
+        @return $px;
+    }
+    @return ($px / $base-font-size) * 1em;
+}
+
+@function mq-retrieve-breakpoint-width($name) {
+    @each $breakpoint in $mq-breakpoints {
+        $breakpoint-name:  nth($breakpoint, 1);
+        $breakpoint-width: nth($breakpoint, 2);
+
+        @if $name == $breakpoint-name {
+            @return $breakpoint-width;
+        }
+    }
+    @return 'Breakpoint #{$name} does not exist';
+}
+
+// Media Query mixin
+// Usage:
+// .element {
+//     @include mq($from: mobile) {
+//         color: red;
+//     }
+//     @include mq($to: tablet) {
+//         color: blue;
+//     }
+//     @include mq(mobile, tablet) {
+//         color: green;
+//     }
+//     @include mq($from: tablet, $and: '(orientation: landscape)') {
+//         color: teal;
+//     }
+//     @include mq(950px) {
+//         color: hotpink;
+//     }
+// }
+
+@mixin mq($from: false, $to: false, $and: false) {
+
+    // Initialize variables
+    $min-width: 0;
+    $max-width: 0;
+    $mediaQuery: '';
+
+    // From: this breakpoint (inclusive)
+    @if $from {
+        @if type-of($from) == number {
+            $min-width: mq-px2em($from);
+        } @else {
+            $min-width: mq-px2em(mq-retrieve-breakpoint-width($from));
+        }
+    }
+
+    // To: that breakpoint (exclusive)
+    @if $to {
+        @if type-of($to) == number {
+            $max-width: mq-px2em($to);
+        } @else {
+            $max-width: mq-px2em(mq-retrieve-breakpoint-width($to) - 1px);
+        }
+    }
+
+    // Responsive support is disabled, rasterize the output outside @media blocks
+    // The browser will rely on the cascade itself.
+    @if ($mq-responsive == false) {
+        $static-breakpoint-width: mq-retrieve-breakpoint-width($mq-static-breakpoint);
+        @if type-of($static-breakpoint-width) == number {
+            $target-width: mq-px2em($static-breakpoint-width);
+            // Output only rules that start at or span our target width
+            @if ($and == false and ($min-width <= $target-width) and (($to == false) or ($max-width >= $target-width))) {
+                @content;
+            }
+        } @else {
+            // Throw a warning if $mq-static-breakpoint is not in the $mq-breakpoints list
+            @warn "No static styles will be output: #{$static-breakpoint-width}";
+        }
+    }
+
+    // Responsive support is enabled, output rules inside @media queries
+    @else {
+        @if $min-width != 0 { $mediaQuery: '#{$mediaQuery} and (min-width: #{$min-width})'; }
+        @if $max-width != 0 { $mediaQuery: '#{$mediaQuery} and (max-width: #{$max-width})'; }
+        @if $and            { $mediaQuery: '#{$mediaQuery} and #{$and}'; }
+
+        $mediaQuery: unquote(#{$mediaQuery});
+
+        @media all #{$mediaQuery} {
+            @content;
+        }
+    }
+}
+
+// Add a breakpoint
+// Usage: $mq-breakpoints: mq-add-breakpoint(tvscreen, 1920px);
+// Credit goes to Sam Richard (author of the `respond-to()` mixin)
+@function mq-add-breakpoint($name, $breakpoint) {
+    $breakpoint: $name $breakpoint;
+    $output: append($mq-breakpoints, $breakpoint, 'space');
+    @return $output;
+}
+
+// GRID
+
+
+@mixin flexgrid($span: 1, $of: 1, $gutter: 0, $inverted: false, $tight: false, $multirow: false, $push: false, $pull: false) {
+
+    $width: percentage($span/$of); // Calculates the column width
+
+    // This section will remove outer margins
+    @if ($tight == true) {
+        $offset: ($gutter/$of)*$span; // Calculate margin offset
+
+        $width: percentage($span/$of)+$offset; // Calculate column width and add offset value
+    }
+
+    $margin: percentage($gutter/100); // Calculate gutter and convert to percentage
+
+    $position1: left; // Set main position value for floats and margins
+    $position2: right; // Set opposite position value
+    
+    @if ($inverted == true) {
+        $position1: right; // Set main position value for floats and margins
+        $position2: left; // Set opposite position value
+    }
+
+    float: $position1; // Float determines whether the column order left to right, or right to left
+    
+    width: $width - $gutter; // Calculate column width minus gutter value
+
+    @if ($multirow == false) {
+        margin-#{$position1}: $margin; // Cancels out any previous nth-of-type (ie. previous media query)
+        margin-#{$position2}: 0; // Cancels out any previous margin (ie. previous media query)
+    }
+
+    &:first-of-type {
+        @if ($tight == true) {
+            margin-#{$position1}: 0; // Reduced left or right margin for item
+        } @else {
+            margin-#{$position1}: $margin/2; // Reduced left or right margin for item
+        }
+        margin-#{$position2}: 0; // Cancels out any previous margin (ie. previous media query)
+    }
+
+    // This section is for grids with multiple rows. Columns must be equally spaced for this to work properly.
+    @if ($multirow == true) {
+        &:nth-of-type(n) {
+            margin-#{$position1}: $margin; // Cancels out any previous nth-of-type (ie. previous media query)
+            margin-#{$position2}: 0; // Cancels out any previous margin (ie. previous media query)
+        }
+
+        &:nth-of-type(#{($of)}n+1) {
+            @if ($tight == true) {
+                margin-#{$position1}: 0; // Adds proper left or right margin to additional rows of a multirow grid
+            } @else {
+                margin-#{$position1}: $margin/2; // Adds proper left or right margin to additional rows of a multirow grid
+            }
+            margin-#{$position2}: 0; // Cancels out any previous margin (ie. previous media query)
+        }
+    }
+
+    // Push and Pull
+    @if ($push != false) {
+        @if ($width < 100) { 
+            $move: ($width)*$push;
+            position: relative;
+            #{$position1}: $move;
+            #{$position2}: inherit;
+        }
+    } @else if ($pull != false) {
+        @if ($width < 100) { 
+            $move: ($width)*$pull;
+            position: relative;
+            #{$position2}: $move;
+            #{$position1}: inherit;
+        }
+    } @else {
+        position: static;
+    }
+}
